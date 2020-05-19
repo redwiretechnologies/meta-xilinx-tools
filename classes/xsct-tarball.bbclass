@@ -70,6 +70,13 @@ python xsct_event_extract() {
             localdata = bb.data.createCopy(d)
             localdata.setVar('FILESPATH', "")
             localdata.setVar('DL_DIR', xsctdldir)
+            # Our games with path manipulation of DL_DIR mean standard PREMIRRORS don't work
+            # and we can't easily put 'chksum' into the url path from a url parameter with
+            # the current fetcher url handling
+            ownmirror = d.getVar('SOURCE_MIRROR_URL')
+            if ownmirror:
+                localdata.appendVar("PREMIRRORS", " ${XSCT_URL}${XSCT_TARBALL} ${SOURCE_MIRROR_URL}/${XSCT_TARBALL}")
+
             srcuri = d.expand("${XSCT_URL}${XSCT_TARBALL};md5sum=%s" % chksum_tar)
             bb.note("Fetching xsct binary tarball from %s" % srcuri)
             fetcher = bb.fetch2.Fetch([srcuri], localdata, cache=False)
