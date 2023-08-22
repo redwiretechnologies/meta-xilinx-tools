@@ -12,9 +12,9 @@ B = "${WORKDIR}/build"
 
 PV = "xilinx+git${SRCPV}"
 
-FILESEXTRAPATHS_append := ":${XLNX_SCRIPTS_DIR}"
+FILESEXTRAPATHS:append := ":${XLNX_SCRIPTS_DIR}"
 
-SRC_URI_append = " \
+SRC_URI:append = " \
         file://multipleHDF.tcl \
         file://base-hsi.tcl \
         "
@@ -28,8 +28,8 @@ DEPENDS += "\
 
 PACKAGE_ARCH ?= "${MACHINE_ARCH}"
 COMPATIBLE_MACHINE ?= "^$"
-COMPATIBLE_MACHINE_zynqmp = ".*"
-COMPATIBLE_MACHINE_zynq = ".*"
+COMPATIBLE_MACHINE:zynqmp = ".*"
+COMPATIBLE_MACHINE:zynq = ".*"
 
 XSCTH_SCRIPT = "${WORKDIR}/multipleHDF.tcl"
 XSCTH_BUILD_CONFIG ?= 'Release'
@@ -56,7 +56,7 @@ YAML_OVERLAY_CUSTOM_DTS = "pl-final.dts"
 do_fetch[cleandirs] = "${XSCTH_HDF}"
 do_configure[cleandirs] = "${XSCTH_WS}"
 
-do_configure_append () {
+do_configure:append () {
     for hdf in ${HDF_LIST}; do
         customfile=${WORKDIR}${EXTRA_HDF}/${hdf}.dtsi
         if [ -f "${customfile}" ];then
@@ -125,6 +125,7 @@ do_compile() {
 }
 
 do_install() {
+        bbwarn "fpga-manager-util recipe will be deprecated in 2023.1 release, users should start using fpgamanager_dtg.bbclass instead"
         install -d ${D}${nonarch_base_libdir}/firmware/xilinx/base
         if [ -e "base.dtbo" ]; then
             #install base hdf artifacts
@@ -149,7 +150,7 @@ do_install() {
         done
 }
 
-ALLOW_EMPTY_${PN} = "1"
+ALLOW_EMPTY:${PN} = "1"
 
 python () {
         if d.getVar('FPGA_MNGR_RECONFIG_ENABLE') == '1':
@@ -160,9 +161,9 @@ python () {
 
                 #package base hdf
                 packages.append(pn + '-base')
-                d.setVar('FILES_' + pn + '-base', baselib + '/firmware/xilinx/base')
+                d.setVar('FILES:' + pn + '-base', baselib + '/firmware/xilinx/base')
                 d.setVar('PACKAGES', ' '.join(packages))
-                d.setVar('RDEPENDS_' + pn , pn + '-base')
+                d.setVar('RDEPENDS:' + pn , pn + '-base')
 
                 if extra:
                         hdflist = []
@@ -176,7 +177,7 @@ python () {
                                 if os.path.isfile(dtsifile):
                                     hdffullpath.append(dtsifile)
 
-                                d.setVar('FILES_' + pn + '-' + name, baselib + '/firmware/xilinx/' + name )
+                                d.setVar('FILES:' + pn + '-' + name, baselib + '/firmware/xilinx/' + name )
                         d.setVar('HDF_LIST', ' '.join(hdflist))
                         extrapackages = [pn + '-{0}'.format(i) for i in hdflist]
                         packages = packages + extrapackages
@@ -186,5 +187,5 @@ python () {
 
                         #put back base package when setting RDEPENDS
                         extrapackages.append(pn + '-base')
-                        d.setVar('RDEPENDS_'+pn , ' '.join(extrapackages))
+                        d.setVar('RDEPENDS:'+pn , ' '.join(extrapackages))
 }

@@ -1,17 +1,16 @@
 DESCRIPTION = "Device Tree generation and packaging for BSP Device Trees using DTG from Xilinx"
 
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://xadcps/data/xadcps.mdd;md5=f7fa1bfdaf99c7182fc0d8e7fd28e04a"
 
-PROVIDES = "virtual/dtb"
-
 require recipes-bsp/device-tree/device-tree.inc
-inherit xsctdt xsctyaml image-artifact-names
+inherit xsctdt xsctyaml
 BASE_DTS ?= "system-top"
 
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 S = "${WORKDIR}/git"
+B = "${WORKDIR}/${BPN}-build"
 
 DT_VERSION_EXTENSION ?= "xilinx-${XILINX_RELEASE_VERSION}"
 PV = "${DT_VERSION_EXTENSION}+git${SRCPV}"
@@ -21,83 +20,81 @@ YAML_COMPILER_FLAGS ?= ""
 XSCTH_APP = "device-tree"
 XSCTH_MISC = " -hdf_type ${HDF_EXT}"
 
-YAML_MAIN_MEMORY_CONFIG_ultra96 ?= "psu_ddr_0"
-YAML_CONSOLE_DEVICE_CONFIG_ultra96 ?= "psu_uart_1"
-
-YAML_MAIN_MEMORY_CONFIG_kc705 ?= "mig_7series_0"
-YAML_CONSOLE_DEVICE_CONFIG_kc705 ?= "axi_uartlite_0"
-
-YAML_DT_BOARD_FLAGS_ultra96 ?= "{BOARD avnet-ultra96-rev1}"
-YAML_DT_BOARD_FLAGS_zcu102 ?= "{BOARD zcu102-rev1.0}"
-YAML_DT_BOARD_FLAGS_zcu106 ?= "{BOARD zcu106-reva}"
-YAML_DT_BOARD_FLAGS_zc702 ?= "{BOARD zc702}"
-YAML_DT_BOARD_FLAGS_zc706 ?= "{BOARD zc706}"
-YAML_DT_BOARD_FLAGS_zedboard ?= "{BOARD zedboard}"
-YAML_DT_BOARD_FLAGS_zc1254 ?= "{BOARD zc1254-reva}"
-YAML_DT_BOARD_FLAGS_kc705 ?= "{BOARD kc705-full}"
-YAML_DT_BOARD_FLAGS_zcu104 ?= "{BOARD zcu104-revc}"
-YAML_DT_BOARD_FLAGS_zcu111 ?= "{BOARD zcu111-reva}"
-YAML_DT_BOARD_FLAGS_zcu1275 ?= "{BOARD zcu1275-revb}"
-YAML_DT_BOARD_FLAGS_zcu1285 ?= "{BOARD zcu1285-reva}"
-YAML_DT_BOARD_FLAGS_zcu216 ?= "{BOARD zcu216-reva}"
-YAML_DT_BOARD_FLAGS_zcu208 ?= "{BOARD zcu208-reva}"
-YAML_DT_BOARD_FLAGS_virt-versal ?= "{BOARD versal-virt}"
-YAML_DT_BOARD_FLAGS_vck-sc ?= "{BOARD zynqmp-e-a2197-00-reva}"
-YAML_DT_BOARD_FLAGS_v350 ?= "{BOARD versal-v350-reva}"
-YAML_DT_BOARD_FLAGS_vck5000 ?= "{BOARD versal-vck5000-reva}"
-YAML_DT_BOARD_FLAGS_vck190 ?= "{BOARD versal-vck190-reva-x-ebm-01-reva}"
-YAML_DT_BOARD_FLAGS_vmk180 ?= "{BOARD versal-vmk180-reva-x-ebm-01-reva}"
-YAML_DT_BOARD_FLAGS_vc-p-a2197-00 ?= "{BOARD versal-vc-p-a2197-00-reva-x-prc-01-reva}"
-YAML_DT_BOARD_FLAGS_ac701 ?= "{BOARD ac701-full}"
-YAML_DT_BOARD_FLAGS_kc705 ?= "{BOARD kc705-full}"
-YAML_DT_BOARD_FLAGS_kcu105 ?= "{BOARD kcu105}"
-YAML_DT_BOARD_FLAGS_sp701 ?= "{BOARD sp701-rev1.0}"
-YAML_DT_BOARD_FLAGS_vcu118 ?= "{BOARD vcu118-rev2.0}"
-YAML_DT_BOARD_FLAGS_k26 ?= "{BOARD zynqmp-sm-k26-revb}"
-YAML_DT_BOARD_FLAGS_zcu670 ?= "{BOARD zcu670-reva}"
-YAML_DT_BOARD_FLAGS_vpk120 ?= "{BOARD versal-vpk120-reva}"
-YAML_DT_BOARD_FLAGS_vpk-sc ?= "{BOARD zynqmp-vpk120-reva}"
-
 YAML_OVERLAY_CUSTOM_DTS = "pl-final.dts"
 CUSTOM_PL_INCLUDE_DTSI ?= ""
 EXTRA_DT_FILES ?= ""
+EXTRA_DTFILE_PREFIX ?= "system-top"
+EXTRA_DTFILES_BUNDLE ?= ""
+UBOOT_DT_FILES ?= ""
+UBOOT_DTFILE_PREFIX ?= "system-top"
+UBOOT_DTFILES_BUNDLE ?= ""
+EXTRA_OVERLAYS ?= ""
 
 DT_FILES_PATH = "${XSCTH_WS}/${XSCTH_PROJ}"
-DT_INCLUDE_append = " ${WORKDIR}"
+DT_RELEASE_VERSION ?= "${XILINX_XSCT_VERSION}"
+DT_INCLUDE:append = " ${WORKDIR} ${S}/device_tree/data/kernel_dtsi/${DT_RELEASE_VERSION}/BOARD/"
 DT_PADDING_SIZE = "0x1000"
-DTC_FLAGS_append = "${@['', ' -@'][d.getVar('YAML_ENABLE_DT_OVERLAY') == '1']}"
+DTC_FLAGS:append = "${@['', ' -@'][d.getVar('YAML_ENABLE_DT_OVERLAY') == '1']}"
 
-COMPATIBLE_MACHINE_zynq = ".*"
-COMPATIBLE_MACHINE_zynqmp = ".*"
-COMPATIBLE_MACHINE_microblaze = ".*"
-COMPATIBLE_MACHINE_versal = ".*"
+COMPATIBLE_MACHINE:zynq = ".*"
+COMPATIBLE_MACHINE:zynqmp = ".*"
+COMPATIBLE_MACHINE:microblaze = ".*"
+COMPATIBLE_MACHINE:versal = ".*"
 
-SRC_URI_append_ultra96 = "${@bb.utils.contains('MACHINE_FEATURES', 'mipi', ' file://mipi-support-ultra96.dtsi file://pl.dtsi', '', d)}"
+SRC_URI:append = "${@" ".join(["file://%s" % f for f in (d.getVar('EXTRA_DT_FILES') or "").split()])}"
+SRC_URI:append = "${@['', ' file://${CUSTOM_PL_INCLUDE_DTSI}'][d.getVar('CUSTOM_PL_INCLUDE_DTSI') != '']}"
+SRC_URI:append = "${@" ".join(["file://%s" % f for f in (d.getVar('EXTRA_OVERLAYS') or "").split()])}"
 
-SRC_URI_append = "${@" ".join(["file://%s" % f for f in (d.getVar('EXTRA_DT_FILES') or "").split()])}"
 do_configure[cleandirs] += "${DT_FILES_PATH} ${B}"
 do_deploy[cleandirs] += "${DEPLOYDIR}"
 
-do_configure_append_ultra96() {
-        if [ -e ${WORKDIR}/mipi-support-ultra96.dtsi ]; then
-               cp ${WORKDIR}/mipi-support-ultra96.dtsi ${DT_FILES_PATH}/mipi-support-ultra96.dtsi
-               cp ${WORKDIR}/pl.dtsi ${DT_FILES_PATH}/pl.dtsi
-               echo '/include/ "mipi-support-ultra96.dtsi"' >> ${DT_FILES_PATH}/${BASE_DTS}.dts
-        fi
-}
-
-do_configure_append () {
+do_configure:append () {
     if [ -n "${CUSTOM_PL_INCLUDE_DTSI}" ]; then
-        [ ! -f "${CUSTOM_PL_INCLUDE_DTSI}" ] && bbfatal "Please check that the correct filepath was provided using CUSTOM_PL_INCLUDE_DTSI"
-        cp ${CUSTOM_PL_INCLUDE_DTSI} ${XSCTH_WS}/${XSCTH_PROJ}/pl-custom.dtsi
+        [ ! -f "${WORKDIR}/${CUSTOM_PL_INCLUDE_DTSI}" ] && bbfatal "Please check that the correct filepath was provided using CUSTOM_PL_INCLUDE_DTSI"
+        cp ${WORKDIR}/${CUSTOM_PL_INCLUDE_DTSI} ${XSCTH_WS}/${XSCTH_PROJ}/pl-custom.dtsi
     fi
 
     for f in ${EXTRA_DT_FILES}; do
         cp ${WORKDIR}/${f} ${DT_FILES_PATH}/
     done
+
+    for f in ${EXTRA_OVERLAYS}; do
+        cp ${WORKDIR}/${f} ${DT_FILES_PATH}/
+        echo "/include/ \"$f\"" >> ${DT_FILES_PATH}/${BASE_DTS}.dts
+    done
 }
 
-do_compile_prepend() {
+devicetree_do_compile:append() {
+    import subprocess
+
+    dtb_file = d.getVar('DTB_FILE_NAME') or ''
+    if not dtb_file or not os.path.isfile(dtb_file):
+        return
+
+    if d.getVar('EXTRA_DTFILES_BUNDLE'):
+        ccdtb_prefix = d.getVar('EXTRA_DTFILE_PREFIX')
+        extra_dt_files = d.getVar('EXTRA_DT_FILES').split() or []
+
+        for dtsfile in extra_dt_files:
+            dtname = os.path.splitext(os.path.basename(dtsfile))[0]
+            if os.path.isfile(f"{dtname}.dtbo"):
+                fdtargs = ["fdtoverlay", "-o", f"{ccdtb_prefix}-{dtname}.dtb", "-i", dtb_file, f"{dtname}.dtbo"]
+                bb.note("Running {0}".format(" ".join(fdtargs)))
+                subprocess.run(fdtargs, check = True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    if d.getVar('UBOOT_DTFILES_BUNDLE'):
+        uboot_ccdtb_prefix = d.getVar('UBOOT_DTFILE_PREFIX')
+        uboot_dt_files = d.getVar('UBOOT_DT_FILES').split() or []
+
+        for dtsfile in uboot_dt_files:
+            dtname = os.path.splitext(os.path.basename(dtsfile))[0]
+            if os.path.isfile(f"{dtname}.dtbo"):
+                fdtargs = ["fdtoverlay", "-o", f"{uboot_ccdtb_prefix}-{dtname}.dtb", "-i", dtb_file, f"{dtname}.dtbo"]
+                bb.note("Running {0}".format(" ".join(fdtargs)))
+                subprocess.run(fdtargs, check = True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+}
+
+do_compile:prepend() {
     listpath = d.getVar("DT_FILES_PATH")
     try:
         os.remove(os.path.join(listpath, "system.dts"))
@@ -105,32 +102,18 @@ do_compile_prepend() {
         pass
 }
 
-BINARY_EXT = ".dtb"
-do_install_append () {
-    install -Dm 0644 ${B}/${BASE_DTS}.dtb ${D}/boot/${PN}${BINARY_EXT}
-}
-FILES_${PN} += "/boot/${PN}${BINARY_EXT}"
-
-DTB_BASE_NAME ?= "${MACHINE}-system${IMAGE_VERSION_SUFFIX}"
-
-do_install_append_microblaze () {
+do_install:append:microblaze () {
     for DTB_FILE in `ls *.dtb`; do
         dtc -I dtb -O dts -o ${D}/boot/devicetree/mb.dts ${B}/${DTB_FILE}
     done
 }
 
-do_deploy() {
-    #deploy base dtb
-    install -Dm 0644 ${B}/${BASE_DTS}.dtb ${DEPLOYDIR}/${DTB_BASE_NAME}.dtb
-    ln -sf ${DTB_BASE_NAME}.dtb ${DEPLOYDIR}/${MACHINE}-system.dtb
-    ln -sf ${DTB_BASE_NAME}.dtb ${DEPLOYDIR}/system.dtb
+DTB_FILE_NAME = "${BASE_DTS}.dtb"
 
-    #deploy everything in case
-	for DTB_FILE in `ls *.dtb *.dtbo`; do
-		install -Dm 0644 ${B}/${DTB_FILE} ${DEPLOYDIR}/
-	done
-}
-
-FILES_${PN}_append_microblaze = " /boot/devicetree/*.dts"
+FILES:${PN}:append:microblaze = " /boot/devicetree/*.dts"
 
 EXTERNALSRC_SYMLINKS = ""
+
+# This will generate the DTB, no need to check
+def check_devicetree_variables(d):
+    return

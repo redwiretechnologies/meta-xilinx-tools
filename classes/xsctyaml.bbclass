@@ -11,6 +11,7 @@ YAML_FILE_PATH ?= ''
 YAML_DT_BOARD_FLAGS ?= ''
 YAML_SERIAL_CONSOLE_STDIN ?= ''
 YAML_SERIAL_CONSOLE_STDOUT ?= ''
+YAML_SERIAL_CONSOLE_BAUDRATE ?= ''
 YAML_MAIN_MEMORY_CONFIG ?= ''
 YAML_CONSOLE_DEVICE_CONFIG ?= ''
 YAML_FLASH_MEMORY_CONFIG ?= ''
@@ -20,14 +21,10 @@ YAML_FIRMWARE_NAME ?= ''
 YAML_OVERLAY_CUSTOM_DTS ?= ''
 YAML_BSP_COMPILER_FLAGS ?= ''
 YAML_ENABLE_NO_ALIAS ?= ''
-
-YAML_SERIAL_CONSOLE_STDIN_ultra96 ?= "psu_uart_1"
-YAML_SERIAL_CONSOLE_STDOUT_ultra96 ?= "psu_uart_1"
-
-YAML_COMPILER_FLAGS_append_ultra96 = " -DBOARD_SHUTDOWN_PIN=2 -DBOARD_SHUTDOWN_PIN_STATE=0 "
+YAML_ENABLE_DT_VERBOSE ?= ''
 
 YAML_FILE_PATH = "${WORKDIR}/${PN}.yaml"
-XSCTH_MISC_append = " -yamlconf ${YAML_FILE_PATH}"
+XSCTH_MISC:append = " -yamlconf ${YAML_FILE_PATH}"
 
 YAML_BUILD_CONFIG ?= "${@d.getVar('XSCTH_BUILD_CONFIG').lower()}"
 YAML_APP_CONFIG += "${@'build-config' if d.getVar('YAML_BUILD_CONFIG') != '' else ''}"
@@ -78,6 +75,15 @@ YAML_BSP_CONFIG[remove_pl] = "set,TRUE"
 YAML_BSP_CONFIG += "${@'no_alias' if d.getVar('YAML_ENABLE_NO_ALIAS') == '1' else ''}"
 YAML_BSP_CONFIG[no_alias] = "set,TRUE"
 
+YAML_BSP_CONFIG += "${@'dt_verbose' if d.getVar('YAML_ENABLE_DT_VERBOSE') == '1' else ''}"
+YAML_BSP_CONFIG[dt_verbose] = "set,TRUE"
+
+YAML_BSP_CONFIG += "${@'dt_setbaud' if d.getVar('YAML_SERIAL_CONSOLE_BAUDRATE') != '' else ''}"
+YAML_BSP_CONFIG[dt_setbaud] = "set,${YAML_SERIAL_CONSOLE_BAUDRATE}"
+
+YAML_BSP_CONFIG += "${@'classic_soc' if d.getVar('YAML_ENABLE_CLASSIC_SOC') == '1' else ''}"
+YAML_BSP_CONFIG[classic_soc] = "set,TRUE"
+
 def patch_yaml(config, configflags, type, type_dict, d):
     import re
     for cfg in config:
@@ -118,5 +124,3 @@ python do_create_yaml() {
 }
 
 addtask create_yaml after do_prepare_recipe_sysroot before do_configure
-
-PACKAGE_ARCH_ultra96 = "${BOARD_ARCH}"

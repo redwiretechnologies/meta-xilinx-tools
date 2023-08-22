@@ -1,5 +1,7 @@
 DESCRIPTION = "OpenAMP demo firmware"
 
+ESW_VER = "${@bb.parse.vars_from_file(d.getVar('FILE', False),d)[1] or '${XILINX_XSCT_VERSION}'}"
+
 inherit xsctapp xsctyaml deploy
 
 LICENSE = "BSD"
@@ -7,12 +9,14 @@ LICENSE = "BSD"
 PARALLEL_MAKE = "-j 1"
 
 COMPATIBLE_MACHINE = "^$"
-COMPATIBLE_MACHINE_zynq = "zynq"
-COMPATIBLE_MACHINE_zynqmp = "zynqmp"
-COMPATIBLE_MACHINE_versal = "versal"
+COMPATIBLE_MACHINE:microblaze = "^$"
+# Build for actual machines, not the generics as the firmware require machine specific knowledge
+COMPATIBLE_MACHINE:zynq = "${@'.*' if d.getVar('MACHINE') != 'zynq-generic' else '^$'}"
+COMPATIBLE_MACHINE:zynqmp = "${@'.*' if d.getVar('MACHINE') != 'zynqmp-generic' else '^$'}"
+COMPATIBLE_MACHINE:versal = "${@'.*' if d.getVar('MACHINE') != 'versal-generic' else '^$'}"
 
-XSCTH_APP_COMPILER_FLAGS_append_zynqmp = " -mfloat-abi=hard "
-XSCTH_APP_COMPILER_FLAGS_append_versal = " -mfloat-abi=hard "
+XSCTH_APP_COMPILER_FLAGS:append:zynqmp = " -mfloat-abi=hard "
+XSCTH_APP_COMPILER_FLAGS:append:versal = " -mfloat-abi=hard "
 
 YAML_BSP_CONFIG += "WITH_PROXY"
 YAML_BSP_CONFIG += "${@bb.utils.contains('SOC_FAMILY', 'zynq', 'extra_compiler_flags', '', d)}"
@@ -22,11 +26,11 @@ YAML_BSP_CONFIG[extra_compiler_flags] = "append,-DUSE_AMP=1"
 FW_OS_NAME ?= "standalone"
 
 XSCTH_MISC = "-osname ${FW_OS_NAME}"
-XSCTH_PROC_IP_versal ?= "psv_cortexr5"
-XSCTH_PROC_IP_zynqmp ?= "psu_cortexr5"
-XSCTH_PROC_zynq ?= "ps7_cortexa9_1"
+XSCTH_PROC_IP:versal ?= "psv_cortexr5"
+XSCTH_PROC_IP:zynqmp ?= "psu_cortexr5"
+XSCTH_PROC:zynq ?= "ps7_cortexa9_1"
 
-INSANE_SKIP_${PN} = "arch"
+INSANE_SKIP:${PN} = "arch"
 
 FW_LIB_DIR = "/lib/firmware"
 
@@ -37,4 +41,4 @@ do_install() {
 	install -m 0644 ${src} ${dest}
 }
 
-FILES_${PN} = "${FW_LIB_DIR}/${OPENAMP_FW_NAME}"
+FILES:${PN} = "${FW_LIB_DIR}/${OPENAMP_FW_NAME}"

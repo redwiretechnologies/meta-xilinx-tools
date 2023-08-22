@@ -1,11 +1,18 @@
-XSCT_LOADER ?= "${XSCT_STAGING_DIR}/Vitis/${XILINX_VER_MAIN}/bin/xsct"
 
-XSCT_URL ?= "http://petalinux.xilinx.com/sswreleases/rel-v2021/xsct-trim/xsct-2021-1.tar.xz"
-XSCT_TARBALL ?= "xsct_${XILINX_VER_MAIN}.tar.xz"
+TOOL_VER_MAIN ?= "${XILINX_XSCT_VERSION}"
+TOOL_VER_MAIN[doc] = "XSCT version, usually the same as XILINX_XSCT_VERSION"
+
+XILINX_SDK_TOOLCHAIN ??= "${XSCT_STAGING_DIR}/Vitis/${TOOL_VER_MAIN}"
+XSCT_LOADER ?= "${XILINX_SDK_TOOLCHAIN}/bin/xsct"
+
+XSCT_URL ?= "http://petalinux.xilinx.com/sswreleases/rel-v2021/xsct-trim/xsct-${@d.getVar('TOOL_VER_MAIN').replace('.', '-')}.tar.xz"
+XSCT_TARBALL ?= "xsct_${TOOL_VER_MAIN}.tar.xz"
 XSCT_DLDIR ?= "${DL_DIR}/xsct/"
 XSCT_STAGING_DIR ?= "${TOPDIR}/xsct"
 
-XSCT_CHECKSUM ?= "05f86f34cce757bfb8ac69a722d00f8f"
+XSCT_CHECKSUM[2021.2] = "b038e9f101c68ae691616d0976651e2be9d045e1a36d997bfe431c1526ab7a9c"
+XSCT_CHECKSUM[2022.2] = "8a3272036ca61f017f357bf6ad9dfbdec6aebb39f43c3ca0cee7ec86ea4c066f"
+XSCT_CHECKSUM ?= "${@d.getVarFlag('XSCT_CHECKSUM', d.getVar('TOOL_VER_MAIN'))}"
 VALIDATE_XSCT_CHECKSUM ?= '1'
 
 USE_XSCT_TARBALL ?= '1'
@@ -44,9 +51,26 @@ XSCT_TARGETS ?= "\
 
 python xsct_event_extract() {
 
+    def check_xsct_version():
+        xsct_path = d.getVar("XILINX_SDK_TOOLCHAIN")
+        if not os.path.exists(xsct_path):
+            bb.fatal("XSCT path was not found.  This usually means the wrong version of XSCT is\nbeing used.\nUnable to find %s." % xsct_path)
+        loader = d.getVar("XSCT_LOADER")
+        if not os.path.exists(loader):
+            bb.fatal("XSCT binary is not found.\nUnable to find %s." % loader)
+
     # Only a handful of targets/tasks need XSCT
     tasks_xsct = [t + '.do_configure' for t in d.getVar('XSCT_TARGETS').split()]
-    xsct_buildtargets = [t for t in e._depgraph['tdepends'] for x in tasks_xsct if x in t]
+
+    xsct_buildtargets = False
+    for mct in e._depgraph['tdepends']:
+        t = mct.split(':')[-1]
+        for x in tasks_xsct:
+            if t == x:
+                xsct_buildtargets = True
+                break
+        if xsct_buildtargets:
+            break
 
     if not xsct_buildtargets and d.getVar('FORCE_XSCT_DOWNLOAD') != '1':
       return
@@ -59,22 +83,26 @@ python xsct_event_extract() {
     chksum_tar_actual = ""
 
     if use_xscttar == '0':
+        if d.getVar('WITHIN_EXT_SDK') != '1':
+            check_xsct_version()
         return
     elif d.getVar('WITHIN_EXT_SDK') != '1':
         if not ext_tarball and not xsct_url:
             bb.fatal('xsct-tarball class is enabled but no external tarball or url is provided.\n\
 \tEither set USE_XSCT_TARBALL to "0" or provide a path/url')
-        if os.path.exists(ext_tarball):
+        if ext_tarball and os.path.exists(ext_tarball):
             bb.note("Checking local xsct tarball checksum")
             import hashlib
-            md5hash = hashlib.md5()
-            readsize = 1024*md5hash.block_size
+            sha256hash = hashlib.sha256()
+            readsize = 1024*sha256hash.block_size
             with open(ext_tarball, 'rb') as f:
                 for chunk in iter(lambda: f.read(readsize), b''):
-                    md5hash.update(chunk)
-            chksum_tar_actual = md5hash.hexdigest()
+                    sha256hash.update(chunk)
+            chksum_tar_actual = sha256hash.hexdigest()
             if validate == '1' and chksum_tar_recipe != chksum_tar_actual:
-                bb.fatal('Provided external tarball\'s md5sum does not match checksum defined in xsct-tarball class')
+                bb.fatal('Provided external tarball\'s sha256sum does not match checksum defined in xsct-tarball class')
+        elif ext_tarball:
+            bb.fatal("Unable to find %s" % ext_tarball)
         elif xsct_url:
             #if fetching the tarball, setting chksum_tar_actual as the one defined in the recipe as the fetcher will fail later otherwise
             chksum_tar_actual = chksum_tar_recipe
@@ -104,7 +132,7 @@ python xsct_event_extract() {
             localdata = bb.data.createCopy(d)
             localdata.setVar('FILESPATH', "")
             localdata.setVar('DL_DIR', xsctdldir)
-            srcuri = d.expand("${XSCT_URL};md5sum=%s;downloadfilename=%s" % (chksum_tar_actual, tarballname))
+            srcuri = d.expand("${XSCT_URL};sha256sum=%s;downloadfilename=%s" % (chksum_tar_actual, tarballname))
             bb.note("Fetching xsct binary tarball from %s" % srcuri)
             fetcher = bb.fetch2.Fetch([srcuri], localdata)
             fetcher.download()
@@ -134,8 +162,7 @@ python xsct_event_extract() {
         with open(tarballchksum, "w") as f:
             f.write(chksum_tar_actual)
 
-        if not os.path.exists(loader):
-            bb.fatal("XSCT is not usable, this usually means the wrong version of XSCT is being\nused.\nUnable to find %s." % loader)
+        check_xsct_version()
 
     except bb.fetch2.BBFetchException as e:
         bb.fatal(str(e))
@@ -144,3 +171,29 @@ python xsct_event_extract() {
     except subprocess.CalledProcessError as exc:
         bb.fatal("Unable to extract xsct tarball: %s" % str(exc))
 }
+
+# The following two items adjust some functions in populate_sdk_ext, so they are benign when set globally.
+# Copy xsct tarball to esdk's download dir, where this class is expecting it to be
+python copy_buildsystem:prepend() {
+
+    if bb.data.inherits_class('xsct-tarball', d):
+        ext_tarball = d.getVar("COPY_XSCT_TO_ESDK")
+        #including xsct tarball in esdk
+        if ext_tarball == '1':
+            import shutil
+            baseoutpath = d.getVar('SDK_OUTPUT') + '/' + d.getVar('SDKPATH')
+            xsct_outdir = '%s/downloads/xsct/' % (baseoutpath)
+            bb.utils.mkdirhier(xsct_outdir)
+            shutil.copy(os.path.join(d.getVar("DL_DIR"), 'xsct', d.getVar("XSCT_TARBALL")), xsct_outdir)
+        #not including tarball in esdk
+        else:
+            d.setVar('sdk_extraconf','USE_XSCT_TARBALL = "0"')
+}
+
+#Add dir with the tools to PATH
+sdk_ext_postinst:append() {
+    if [ "${COPY_XSCT_TO_ESDK}" = "1" ]; then
+        echo "export PATH=$target_sdk_dir/tmp/sysroots-xsct/Vitis/${TOOL_VER_MAIN}/bin:\$PATH" >> $env_setup_script
+    fi
+}
+

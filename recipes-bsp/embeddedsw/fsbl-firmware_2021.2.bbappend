@@ -6,34 +6,39 @@ DEFAULT_PREFERENCE = "100"
 
 inherit xsctapp xsctyaml
 
+# This needs to match fsbl.bbappend
+FSBL_IMAGE_NAME = "fsbl-${MACHINE}"
+
 B = "${S}/${XSCTH_PROJ}"
-B_zynq = "${S}/${XSCTH_PROJ}"
-B_zynqmp = "${S}/${XSCTH_PROJ}"
+B:zynq = "${S}/${XSCTH_PROJ}"
+B:zynqmp = "${S}/${XSCTH_PROJ}"
+
+XSCTH_MISC:append:zynqmp-dr = " -lib libmetal"
 
 XSCTH_COMPILER_DEBUG_FLAGS = " -DFSBL_DEBUG_INFO"
 
-XSCTH_APP_zynq   = "Zynq FSBL"
-XSCTH_APP_zynqmp = "Zynq MP FSBL"
+XSCTH_APP:zynq   = "Zynq FSBL"
+XSCTH_APP:zynqmp = "Zynq MP FSBL"
 
 # Building for zynq does work here
-COMPATIBLE_MACHINE_zynq = ".*"
+COMPATIBLE_MACHINE:zynq = ".*"
 
 # XSCT version provides it's own toolchain, so can build in any environment
-COMPATIBLE_HOST_zynq   = "${HOST_SYS}"
-COMPATIBLE_HOST_zynqmp = "${HOST_SYS}"
+COMPATIBLE_HOST:zynq   = "${HOST_SYS}"
+COMPATIBLE_HOST:zynqmp = "${HOST_SYS}"
 
 # Clear this for a Linux build, using the XSCT toolchain
-EXTRA_OEMAKE_linux = ""
-EXTRA_OEMAKE_linux-gnueabi = ""
+EXTRA_OEMAKE:linux = ""
+EXTRA_OEMAKE:linux-gnueabi = ""
 
 # Workaround for hardcoded toolchain items
-XSCT_PATH_ADD_append_elf = "\
+XSCT_PATH_ADD:append:elf = "\
 ${WORKDIR}/bin:"
 
-XSCT_PATH_ADD_append_eabi = "\
+XSCT_PATH_ADD:append:eabi = "\
 ${WORKDIR}/bin:"
 
-do_compile_prepend_elf_aarch64() {
+do_compile:prepend:elf:aarch64() {
   mkdir -p ${WORKDIR}/bin
   echo "#! /bin/bash\n${CC} \$@" > ${WORKDIR}/bin/aarch64-none-elf-gcc
   echo "#! /bin/bash\n${AS} \$@" > ${WORKDIR}/bin/aarch64-none-elf-as
@@ -43,8 +48,8 @@ do_compile_prepend_elf_aarch64() {
   chmod 0755 ${WORKDIR}/bin/aarch64-none-elf-ar
 }
 
-ARM_INSTRUCTION_SET_eabi_arm = "arm"
-do_compile_prepend_eabi_arm() {
+ARM_INSTRUCTION_SET:eabi:arm = "arm"
+do_compile:prepend:eabi:arm() {
   mkdir -p ${WORKDIR}/bin
   echo "#! /bin/bash\n${CC} \$@" > ${WORKDIR}/bin/arm-none-eabi-gcc
   echo "#! /bin/bash\n${AS} \$@" > ${WORKDIR}/bin/arm-none-eabi-as

@@ -6,30 +6,32 @@ DEFAULT_PREFERENCE = "100"
 
 inherit xsctapp xsctyaml
 
+# This needs to match pmufw.bbappend
+PMU_FIRMWARE_IMAGE_NAME = "pmu-firmware-${MACHINE}"
+
 B = "${S}/${XSCTH_PROJ}"
+
+XSCTH_MISC:append:zynqmp-dr = " -lib libmetal"
 
 XSCTH_COMPILER_DEBUG_FLAGS = "-DDEBUG_MODE -DXPFW_DEBUG_DETAILED"
 XSCTH_PROC_IP = "psu_pmu"
 XSCTH_APP  = "ZynqMP PMU Firmware"
 
-ULTRA96_VERSION ?= "1"
-YAML_COMPILER_FLAGS_append = " -DENABLE_SCHEDULER "
-YAML_COMPILER_FLAGS_append_ultra96 = " -DENABLE_MOD_ULTRA96 ${@bb.utils.contains('ULTRA96_VERSION', '2', ' -DULTRA96_VERSION=2 ', ' -DULTRA96_VERSION=1 ', d)}"
-YAML_COMPILER_FLAGS_append_k26 = " -DBOARD_SHUTDOWN_PIN=2 -DBOARD_SHUTDOWN_PIN_STATE=0 -DENABLE_EM -DENABLE_MOD_OVERTEMP -DOVERTEMP_DEGC=90.0 "
+YAML_COMPILER_FLAGS:append = " -DENABLE_SCHEDULER "
 
 # XSCT version provides it's own toolchain, so can build in any environment
-COMPATIBLE_HOST_zynqmp = "${HOST_SYS}"
+COMPATIBLE_HOST:zynqmp = "${HOST_SYS}"
 
 # Clear this for a Linux build, using the XSCT toolchain
-EXTRA_OEMAKE_linux = ""
+EXTRA_OEMAKE:linux = ""
 
 # Workaround for hardcoded toolchain items
-XSCT_PATH_ADD_append_elf = "\
+XSCT_PATH_ADD:append:elf = "\
 ${WORKDIR}/bin:"
 
 MB_OBJCOPY = "mb-objcopy"
 
-do_compile_prepend_elf() {
+do_compile:prepend:elf() {
   mkdir -p ${WORKDIR}/bin
   echo "#! /bin/bash\n${CC} \$@" > ${WORKDIR}/bin/mb-gcc
   echo "#! /bin/bash\n${AS} \$@" > ${WORKDIR}/bin/mb-as
@@ -41,7 +43,7 @@ do_compile_prepend_elf() {
   chmod 0755 ${WORKDIR}/bin/mb-objcopy
 }
 
-do_compile_append() {
+do_compile:append() {
   ${MB_OBJCOPY} -O binary ${B}/${XSCTH_PROJ}/executable.elf ${B}/${XSCTH_PROJ}/executable.bin
 }
 
